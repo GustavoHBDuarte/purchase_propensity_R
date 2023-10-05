@@ -37,24 +37,76 @@ df %>% head
 
 ```{r}
 # lowering and standardizing column names
-df_1 <- janitor::clean_names(df)
+df <- janitor::clean_names(df)
 
-df_1 %>% head
+df %>% head
 ```
 
 ```{r}
 # Data types
-dplyr::tibble(features = colnames(df_1), 
-              data_tipe = unlist(lapply(df_1, class))
+dplyr::tibble(features = colnames(df), 
+              data_tipe = unlist(lapply(df, typeof))
               )
 ```
 
 ```{r}
 # 1 - Replacing some column names (rename() function)
 
-df_1 %>% 
-  rename(days_associated = vintage,
-         health_annual_paid = annual_premium)
+# 2 - Changing categorical columns elements to lowercase
+
+# 3 - Changing 'vehicle_age' column values
+
+# função mutate: nome da variável, operação a fazer na variável
+# função across: aplica uma função à multiplas colunas
+
+df <- df %>% 
+  
+  # renomear colunas -> rename(nome_novo, nome_antigo)
+  dplyr::rename(days_associated = vintage,
+                health_annual_paid = annual_premium) %>% 
+  
+  # mutate(nome_da_variável, operacao)
+  dplyr::mutate(
+    
+                across(where(is.character), tolower),
+                
+                driving_license = ifelse(driving_license==1, "yes", "no"),
+                
+                previously_insured = ifelse(previously_insured==1, "yes", "no"),
+                
+                response = ifelse(response==1, "yes", "no"),
+                
+                vehicle_age = case_when(
+                                        vehicle_age == "< 1 year" ~ "less_than_1_year",
+                                        vehicle_age == "1-2 year" ~ "between_1_and_2_years",
+                                        vehicle_age == "> 2 years" ~ "more_than_1_year"
+                                        )
+    
+               ) %>% 
+  
+  # convertendo variáveis de caracter p/ factor
+  dplyr::mutate_if(is.character, as.factor)
+  
+
+```
+
+```{r}
+# Response variable:
+
+# Setting "yes" as first level in "response" column
+
+df[['response']] <- factor(df[['response']], levels=c("yes", "no"))
+```
+
+```{r}
+# Saving df as rds file
+base::saveRDS(df, "df_cleaned.rds")
+```
+
+```{r}
+# Check df
+
+df
 ```
 
 ```{r setup, include=FALSE}
