@@ -11,7 +11,7 @@
 
 <meta name="author" content="Gustavo Duarte" />
 
-<meta name="date" content="2023-10-03" />
+<meta name="date" content="2023-10-08" />
 
 <title>purchase_propensity_2</title>
 
@@ -352,13 +352,13 @@ display: none;
 
 <h1 class="title toc-ignore">purchase_propensity_2</h1>
 <h4 class="author">Gustavo Duarte</h4>
-<h4 class="date">2023-10-03</h4>
+<h4 class="date">2023-10-08</h4>
 
 </div>
 
 
 <div id="installing-packages" class="section level1">
-<h1>Installing Packages</h1>
+<h1>0.0 - Installing Packages</h1>
 <pre class="r"><code>install.packages(&quot;tidyverse&quot;)</code></pre>
 <pre><code>## Installing package into &#39;/cloud/lib/x86_64-pc-linux-gnu-library/4.3&#39;
 ## (as &#39;lib&#39; is unspecified)</code></pre>
@@ -367,7 +367,7 @@ display: none;
 ## (as &#39;lib&#39; is unspecified)</code></pre>
 </div>
 <div id="import-libraries" class="section level1">
-<h1>Import libraries</h1>
+<h1>0.1 - Import libraries</h1>
 <pre class="r"><code>library(tidyverse)</code></pre>
 <pre><code>## ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
 ## ✔ dplyr     1.1.3     ✔ readr     2.1.4
@@ -389,8 +389,8 @@ library(janitor) # nomes de colunas em caixa baixa e espaços em _</code></pre>
 ##     chisq.test, fisher.test</code></pre>
 </div>
 <div id="loading-data" class="section level1">
-<h1>Loading data</h1>
-<pre class="r"><code>df &lt;- read_csv(&quot;train.csv&quot;)</code></pre>
+<h1>0.2 - Loading data</h1>
+<pre class="r"><code>df &lt;- readr::read_csv(&quot;train.csv&quot;)</code></pre>
 <pre><code>## Rows: 381109 Columns: 12
 ## ── Column specification ────────────────────────────────────────────────────────
 ## Delimiter: &quot;,&quot;
@@ -400,24 +400,22 @@ library(janitor) # nomes de colunas em caixa baixa e espaços em _</code></pre>
 ## ℹ Use `spec()` to retrieve the full column specification for this data.
 ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
 <pre class="r"><code>#View(df)
-dplyr::glimpse(df)</code></pre>
-<pre><code>## Rows: 381,109
-## Columns: 12
-## $ id                   &lt;dbl&gt; 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15…
-## $ Gender               &lt;chr&gt; &quot;Male&quot;, &quot;Male&quot;, &quot;Male&quot;, &quot;Male&quot;, &quot;Female&quot;, &quot;Female…
-## $ Age                  &lt;dbl&gt; 44, 76, 47, 21, 29, 24, 23, 56, 24, 32, 47, 24, 4…
-## $ Driving_License      &lt;dbl&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
-## $ Region_Code          &lt;dbl&gt; 28, 3, 28, 11, 41, 33, 11, 28, 3, 6, 35, 50, 15, …
-## $ Previously_Insured   &lt;dbl&gt; 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0…
-## $ Vehicle_Age          &lt;chr&gt; &quot;&gt; 2 Years&quot;, &quot;1-2 Year&quot;, &quot;&gt; 2 Years&quot;, &quot;&lt; 1 Year&quot;,…
-## $ Vehicle_Damage       &lt;chr&gt; &quot;Yes&quot;, &quot;No&quot;, &quot;Yes&quot;, &quot;No&quot;, &quot;No&quot;, &quot;Yes&quot;, &quot;Yes&quot;, &quot;Ye…
-## $ Annual_Premium       &lt;dbl&gt; 40454, 33536, 38294, 28619, 27496, 2630, 23367, 3…
-## $ Policy_Sales_Channel &lt;dbl&gt; 26, 26, 26, 152, 152, 160, 152, 26, 152, 152, 124…
-## $ Vintage              &lt;dbl&gt; 217, 183, 27, 203, 39, 176, 249, 72, 28, 80, 46, …
-## $ Response             &lt;dbl&gt; 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0…</code></pre>
+#dplyr::glimpse(df)
+df %&gt;% head</code></pre>
+<pre><code>## # A tibble: 6 × 12
+##      id Gender   Age Driving_License Region_Code Previously_Insured Vehicle_Age
+##   &lt;dbl&gt; &lt;chr&gt;  &lt;dbl&gt;           &lt;dbl&gt;       &lt;dbl&gt;              &lt;dbl&gt; &lt;chr&gt;      
+## 1     1 Male      44               1          28                  0 &gt; 2 Years  
+## 2     2 Male      76               1           3                  0 1-2 Year   
+## 3     3 Male      47               1          28                  0 &gt; 2 Years  
+## 4     4 Male      21               1          11                  1 &lt; 1 Year   
+## 5     5 Female    29               1          41                  1 &lt; 1 Year   
+## 6     6 Female    24               1          33                  0 &lt; 1 Year   
+## # ℹ 5 more variables: Vehicle_Damage &lt;chr&gt;, Annual_Premium &lt;dbl&gt;,
+## #   Policy_Sales_Channel &lt;dbl&gt;, Vintage &lt;dbl&gt;, Response &lt;dbl&gt;</code></pre>
 </div>
 <div id="data-checking-cleaning-and-description" class="section level1">
-<h1>Data checking, cleaning and description</h1>
+<h1>1.0 - Data checking, cleaning and description</h1>
 <pre class="r"><code># Checking first rows
 df %&gt;% head</code></pre>
 <pre><code>## # A tibble: 6 × 12
@@ -431,10 +429,10 @@ df %&gt;% head</code></pre>
 ## 6     6 Female    24               1          33                  0 &lt; 1 Year   
 ## # ℹ 5 more variables: Vehicle_Damage &lt;chr&gt;, Annual_Premium &lt;dbl&gt;,
 ## #   Policy_Sales_Channel &lt;dbl&gt;, Vintage &lt;dbl&gt;, Response &lt;dbl&gt;</code></pre>
-<pre class="r"><code># lowering and standardizing column names
-df_1 &lt;- janitor::clean_names(df)
+<pre class="r"><code># Colocando nome das colunas em caixa baixa
+df &lt;- janitor::clean_names(df)
 
-df_1 %&gt;% head</code></pre>
+df %&gt;% head</code></pre>
 <pre><code>## # A tibble: 6 × 12
 ##      id gender   age driving_license region_code previously_insured vehicle_age
 ##   &lt;dbl&gt; &lt;chr&gt;  &lt;dbl&gt;           &lt;dbl&gt;       &lt;dbl&gt;              &lt;dbl&gt; &lt;chr&gt;      
@@ -447,45 +445,122 @@ df_1 %&gt;% head</code></pre>
 ## # ℹ 5 more variables: vehicle_damage &lt;chr&gt;, annual_premium &lt;dbl&gt;,
 ## #   policy_sales_channel &lt;dbl&gt;, vintage &lt;dbl&gt;, response &lt;dbl&gt;</code></pre>
 <pre class="r"><code># Data types
-dplyr::tibble(features = colnames(df_1), 
-              data_tipe = unlist(lapply(df_1, class))
+
+dplyr::tibble(features = colnames(df), 
+              data_tipe = unlist(lapply(df, typeof))
               )</code></pre>
 <pre><code>## # A tibble: 12 × 2
 ##    features             data_tipe
 ##    &lt;chr&gt;                &lt;chr&gt;    
-##  1 id                   numeric  
+##  1 id                   double   
 ##  2 gender               character
-##  3 age                  numeric  
-##  4 driving_license      numeric  
-##  5 region_code          numeric  
-##  6 previously_insured   numeric  
+##  3 age                  double   
+##  4 driving_license      double   
+##  5 region_code          double   
+##  6 previously_insured   double   
 ##  7 vehicle_age          character
 ##  8 vehicle_damage       character
-##  9 annual_premium       numeric  
-## 10 policy_sales_channel numeric  
-## 11 vintage              numeric  
-## 12 response             numeric</code></pre>
+##  9 annual_premium       double   
+## 10 policy_sales_channel double   
+## 11 vintage              double   
+## 12 response             double</code></pre>
+<pre class="r"><code># Data dimensions
+
+
+dplyr::tibble( dimension = unlist(list(&quot;rows&quot;, &quot;columns&quot;)),
+               count = c(dim(df)[1], dim(df)[2]))</code></pre>
+<pre><code>## # A tibble: 2 × 2
+##   dimension  count
+##   &lt;chr&gt;      &lt;int&gt;
+## 1 rows      381109
+## 2 columns       12</code></pre>
+<pre class="r"><code># Checking NA&#39;s
+
+dplyr::tibble(variable = colnames(df),
+              number_of_missing = colSums(is.na(df)))</code></pre>
+<pre><code>## # A tibble: 12 × 2
+##    variable             number_of_missing
+##    &lt;chr&gt;                            &lt;dbl&gt;
+##  1 id                                   0
+##  2 gender                               0
+##  3 age                                  0
+##  4 driving_license                      0
+##  5 region_code                          0
+##  6 previously_insured                   0
+##  7 vehicle_age                          0
+##  8 vehicle_damage                       0
+##  9 annual_premium                       0
+## 10 policy_sales_channel                 0
+## 11 vintage                              0
+## 12 response                             0</code></pre>
 <pre class="r"><code># 1 - Replacing some column names (rename() function)
 
-df_1 %&gt;% 
-  rename(days_associated = vintage,
-         health_annual_paid = annual_premium)</code></pre>
-<pre><code>## # A tibble: 381,109 × 12
-##       id gender   age driving_license region_code previously_insured vehicle_age
-##    &lt;dbl&gt; &lt;chr&gt;  &lt;dbl&gt;           &lt;dbl&gt;       &lt;dbl&gt;              &lt;dbl&gt; &lt;chr&gt;      
-##  1     1 Male      44               1          28                  0 &gt; 2 Years  
-##  2     2 Male      76               1           3                  0 1-2 Year   
-##  3     3 Male      47               1          28                  0 &gt; 2 Years  
-##  4     4 Male      21               1          11                  1 &lt; 1 Year   
-##  5     5 Female    29               1          41                  1 &lt; 1 Year   
-##  6     6 Female    24               1          33                  0 &lt; 1 Year   
-##  7     7 Male      23               1          11                  0 &lt; 1 Year   
-##  8     8 Female    56               1          28                  0 1-2 Year   
-##  9     9 Female    24               1           3                  1 &lt; 1 Year   
-## 10    10 Female    32               1           6                  1 &lt; 1 Year   
-## # ℹ 381,099 more rows
-## # ℹ 5 more variables: vehicle_damage &lt;chr&gt;, health_annual_paid &lt;dbl&gt;,
-## #   policy_sales_channel &lt;dbl&gt;, days_associated &lt;dbl&gt;, response &lt;dbl&gt;</code></pre>
+# 2 - Changing categorical columns elements to lowercase
+
+# 3 - Changing &#39;vehicle_age&#39; column values
+
+# função mutate: nome da variável, operação a fazer na variável
+# função across: aplica uma função à multiplas colunas
+
+df &lt;- df %&gt;% 
+  
+  # renomear colunas -&gt; rename(nome_novo, nome_antigo)
+  dplyr::rename(days_associated = vintage,
+                health_annual_paid = annual_premium) %&gt;% 
+  
+  # mutate(nome_da_variável, operacao)
+  dplyr::mutate(
+    
+                # colunas categóricas -&gt; valores em lowercase
+                across(where(is.character), tolower),
+                
+                # colunas com valores 1 ou 0 -&gt; substituir por &quot;yes&quot; ou &quot;no&quot;
+                
+                driving_license = ifelse(driving_license==1, &quot;yes&quot;, &quot;no&quot;),
+                
+                previously_insured = ifelse(previously_insured==1, &quot;yes&quot;, &quot;no&quot;),
+                
+                response = ifelse(response==1, &quot;yes&quot;, &quot;no&quot;),
+                
+                # coluna &quot;vehicle_age&quot; -&gt; substituindo os valores
+                vehicle_age = case_when(
+                                        vehicle_age == &quot;&lt; 1 year&quot; ~ &quot;less_than_1_year&quot;,
+                                        vehicle_age == &quot;1-2 year&quot; ~ &quot;between_1_and_2_years&quot;,
+                                        vehicle_age == &quot;&gt; 2 years&quot; ~ &quot;more_than_1_year&quot;
+                                        )
+    
+               ) %&gt;% 
+  
+  # convertendo variáveis de caracter p/ factor
+  dplyr::mutate_if(is.character, as.factor)</code></pre>
+<pre class="r"><code># Response variable:
+
+# Ajustando a variável resposta para fator ordenado -&gt; &quot;yes&quot; no primeiro nível
+
+df &lt;- df %&gt;% mutate(response = factor(response, levels=c(&quot;yes&quot;, &quot;no&quot;)))</code></pre>
+<pre class="r"><code># Contando a quantidade de &quot;yes&quot; e &quot;no&quot; na variável resposta após a conversão p/ factor ord
+
+df$response %&gt;% table</code></pre>
+<pre><code>## .
+##    yes     no 
+##  46710 334399</code></pre>
+<pre class="r"><code># Saving df as rds file
+base::saveRDS(df, &quot;df_cleaned.rds&quot;)</code></pre>
+<pre class="r"><code># Loading RDS file
+df &lt;- base::readRDS(&quot;df_cleaned.rds&quot;)
+
+df %&gt;% head</code></pre>
+<pre><code>## # A tibble: 6 × 12
+##      id gender   age driving_license region_code previously_insured vehicle_age 
+##   &lt;dbl&gt; &lt;fct&gt;  &lt;dbl&gt; &lt;fct&gt;                 &lt;dbl&gt; &lt;fct&gt;              &lt;fct&gt;       
+## 1     1 male      44 yes                      28 no                 more_than_1…
+## 2     2 male      76 yes                       3 no                 between_1_a…
+## 3     3 male      47 yes                      28 no                 more_than_1…
+## 4     4 male      21 yes                      11 yes                less_than_1…
+## 5     5 female    29 yes                      41 yes                less_than_1…
+## 6     6 female    24 yes                      33 no                 less_than_1…
+## # ℹ 5 more variables: vehicle_damage &lt;fct&gt;, health_annual_paid &lt;dbl&gt;,
+## #   policy_sales_channel &lt;dbl&gt;, days_associated &lt;dbl&gt;, response &lt;fct&gt;</code></pre>
 <div id="r-markdown" class="section level2">
 <h2>R Markdown</h2>
 <p>This is an R Markdown document. Markdown is a simple formatting

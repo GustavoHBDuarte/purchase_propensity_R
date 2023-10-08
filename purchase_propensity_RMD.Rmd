@@ -5,14 +5,14 @@ date: "`r Sys.Date()`"
 output: html_document
 ---
 
-# Installing Packages
+# 0.0 - Installing Packages
 
 ```{r}
 install.packages("tidyverse")
 install.packages("janitor")
 ```
 
-# Import libraries
+# 0.1 - Import libraries
 
 ```{r}
 library(tidyverse)
@@ -20,15 +20,16 @@ library(readr) # leitura de arquivos .csv
 library(janitor) # nomes de colunas em caixa baixa e espaços em _
 ```
 
-# Loading data
+# 0.2 - Loading data
 
 ```{r}
-df <- read_csv("train.csv")
+df <- readr::read_csv("train.csv")
 #View(df)
-dplyr::glimpse(df)
+#dplyr::glimpse(df)
+df %>% head
 ```
 
-# Data checking, cleaning and description
+# 1.0 - Data checking, cleaning and description
 
 ```{r}
 # Checking first rows
@@ -36,7 +37,7 @@ df %>% head
 ```
 
 ```{r}
-# lowering and standardizing column names
+# Colocando nome das colunas em caixa baixa
 df <- janitor::clean_names(df)
 
 df %>% head
@@ -44,9 +45,25 @@ df %>% head
 
 ```{r}
 # Data types
+
 dplyr::tibble(features = colnames(df), 
               data_tipe = unlist(lapply(df, typeof))
               )
+```
+
+```{r}
+# Data dimensions
+
+
+dplyr::tibble( dimension = unlist(list("rows", "columns")),
+               count = c(dim(df)[1], dim(df)[2]))
+```
+
+```{r}
+# Checking NA's
+
+dplyr::tibble(variable = colnames(df),
+              number_of_missing = colSums(is.na(df)))
 ```
 
 ```{r}
@@ -68,7 +85,10 @@ df <- df %>%
   # mutate(nome_da_variável, operacao)
   dplyr::mutate(
     
+                # colunas categóricas -> valores em lowercase
                 across(where(is.character), tolower),
+                
+                # colunas com valores 1 ou 0 -> substituir por "yes" ou "no"
                 
                 driving_license = ifelse(driving_license==1, "yes", "no"),
                 
@@ -76,6 +96,7 @@ df <- df %>%
                 
                 response = ifelse(response==1, "yes", "no"),
                 
+                # coluna "vehicle_age" -> substituindo os valores
                 vehicle_age = case_when(
                                         vehicle_age == "< 1 year" ~ "less_than_1_year",
                                         vehicle_age == "1-2 year" ~ "between_1_and_2_years",
@@ -93,9 +114,15 @@ df <- df %>%
 ```{r}
 # Response variable:
 
-# Setting "yes" as first level in "response" column
+# Ajustando a variável resposta para fator ordenado -> "yes" no primeiro nível
 
-df[['response']] <- factor(df[['response']], levels=c("yes", "no"))
+df <- df %>% mutate(response = factor(response, levels=c("yes", "no")))
+```
+
+```{r}
+# Contando a quantidade de "yes" e "no" na variável resposta após a conversão p/ factor ord
+
+df$response %>% table
 ```
 
 ```{r}
@@ -104,9 +131,10 @@ base::saveRDS(df, "df_cleaned.rds")
 ```
 
 ```{r}
-# Check df
+# Loading RDS file
+df <- base::readRDS("df_cleaned.rds")
 
-df
+df %>% head
 ```
 
 ```{r setup, include=FALSE}
