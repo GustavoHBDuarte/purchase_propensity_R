@@ -5,31 +5,40 @@ date: "`r Sys.Date()`"
 output: html_document
 ---
 
-# 0.0 - Installing Packages
+# 0 - Starting point
+
+## 0.0 - Installing Packages
 
 ```{r}
 install.packages("tidyverse")
 install.packages("janitor")
+install.packages("skimr")
+install.packages("gtsummary")
+install.packages("summarytools")
+install.packages("kableExtra")
 ```
 
-# 0.1 - Import libraries
+## 0.1 - Import libraries
 
 ```{r}
 library(tidyverse)
 library(readr) # leitura de arquivos .csv
 library(janitor) # nomes de colunas em caixa baixa e espaços em _
+library(skimr) # gera um dataframe de estatísticas para variáveis numéricas
+library(gtsummary) # gera uma figura sumarizando as variáveis
+library(summarytools)
 ```
 
-# 0.2 - Loading data
+# 1.0 - Data loading, checking, cleaning and description
 
 ```{r}
+# Loading data:
+
 df <- readr::read_csv("train.csv")
 #View(df)
 #dplyr::glimpse(df)
 df %>% head
 ```
-
-# 1.0 - Data checking, cleaning and description
 
 ```{r}
 # Checking first rows
@@ -73,6 +82,8 @@ dplyr::tibble(variable = colnames(df),
 
 # 3 - Changing 'vehicle_age' column values
 
+# 4 - Changin character columns to factor
+
 # função mutate: nome da variável, operação a fazer na variável
 # função across: aplica uma função à multiplas colunas
 
@@ -112,11 +123,23 @@ df <- df %>%
 ```
 
 ```{r}
-# Response variable:
+# Adjusting "yes"/"no" variables to ordered factor:
 
-# Ajustando a variável resposta para fator ordenado -> "yes" no primeiro nível
+## Ajustando as variáveis de yes/no colocando "yes" no primeiro nível do factor
 
-df <- df %>% mutate(response = factor(response, levels=c("yes", "no")))
+df <- df %>% mutate(
+                    # response variable
+                    response = factor(response, levels=c("yes", "no")),
+                    
+                    # driving_license
+                    driving_license = factor(driving_license, levels=c("yes", "no")),
+                    
+                    # previously_insured
+                    previously_insured = factor(previously_insured, levels=c("yes", "no")),
+                    
+                    # vehicle_damage
+                    vehicle_damage = factor(vehicle_damage, levels=c("yes","no"))
+                    )
 ```
 
 ```{r}
@@ -135,6 +158,88 @@ base::saveRDS(df, "df_cleaned.rds")
 df <- base::readRDS("df_cleaned.rds")
 
 df %>% head
+```
+
+```{r}
+# Descripitive statistics
+
+skimr::skim(df) 
+```
+
+```{r}
+# Pacote gtsummary -> cria sumários de tabelas
+
+df %>% 
+  select(-id) %>% 
+  gtsummary::tbl_summary(
+                          type = list(response ~ "categorical",
+                                      driving_license ~ "categorical",
+                                      previously_insured ~ "categorical",
+                                      vehicle_damage ~ "categorical"),
+                          
+                          digits = list(all_categorical() ~ c(0,2))
+  )
+```
+
+Statistics of numerical attributes
+
+```{r}
+# Numerical attributes -> descriptive statistical evaluation
+
+num_attributes <- df %>% 
+                        select(age, days_associated, health_annual_paid) 
+  
+  
+# comando abaixo gera um descritivo estatístico
+num_attributes_stats <- descr(num_attributes, style = "rmarkdown") %>% 
+  
+                        round(2)
+
+# comando abaixo formata/organiza a saída do comando acima
+kableExtra::kable(data.frame(num_attributes_stats), format = "html") %>% 
+                  
+          kableExtra::kable_styling(bootstrap_options = "striped",
+                                    full_width = FALSE)
+```
+
+# 2.0 EDA
+
+## 2.1 Univariate
+
+### 2.1.1 Numerical attributes
+
+```{r}
+# Histogram
+
+# Age ================================
+
+num_attributes %>% 
+  
+  ggplot(aes(x=age)) +
+  
+  geom_histogram()
+```
+
+```{r}
+num_attributes
+```
+
+### 2.2.2 Categorical attributes
+
+```{r}
+
+```
+
+## 2.2 Bivariate
+
+```{r}
+
+```
+
+## 2.3 Multivariate
+
+```{r}
+
 ```
 
 ```{r setup, include=FALSE}
