@@ -16,9 +16,10 @@ install.packages("skimr")
 install.packages("gtsummary")
 install.packages("summarytools")
 install.packages("kableExtra")
+install.packages("gridExtra")
 ```
 
-## 0.1 - Import libraries
+## 0.1 - Importing libraries
 
 ```{r}
 library(tidyverse)
@@ -37,7 +38,6 @@ library(summarytools)
 df <- readr::read_csv("train.csv")
 #View(df)
 #dplyr::glimpse(df)
-df %>% head
 ```
 
 ```{r}
@@ -62,7 +62,6 @@ dplyr::tibble(features = colnames(df),
 
 ```{r}
 # Data dimensions
-
 
 dplyr::tibble( dimension = unlist(list("rows", "columns")),
                count = c(dim(df)[1], dim(df)[2]))
@@ -202,6 +201,15 @@ kableExtra::kable(data.frame(num_attributes_stats), format = "html") %>%
                                     full_width = FALSE)
 ```
 
+Categorical attributes
+
+```{r}
+categ_attributes <- df %>% 
+                        select(-id, -colnames(num_attributes)) 
+
+categ_attributes
+```
+
 # 2.0 EDA
 
 ## 2.1 Univariate
@@ -213,21 +221,165 @@ kableExtra::kable(data.frame(num_attributes_stats), format = "html") %>%
 
 # Age ================================
 
-num_attributes %>% 
+age_plot <- num_attributes %>% 
   
-  ggplot(aes(x=age)) +
+  ggplot(aes(x=age)) + # informar o dado que irá no eixo da figura
   
-  geom_histogram()
+  geom_histogram(aes(y=after_stat(density)),
+                 binwidth = 1,
+                 color="red", 
+                 fill="green",
+                 alpha=0.5) + # alpha -> controla a transparência
+  
+  geom_density(color="blue") +
+  
+  labs(x= "Age", y= "Density", title = "Histograma de frequências para idade") +
+  
+  theme_bw()
+
+age_plot  
 ```
 
 ```{r}
-num_attributes
+# Days associated ================================
+
+days_associated_plot <- num_attributes %>% 
+  
+  ggplot(aes(x=days_associated)) + # informar o dado que irá no eixo da figura
+  
+  geom_histogram(aes(y=after_stat(density)),
+                 binwidth = 50,
+                 color="red", 
+                 fill="green",
+                 alpha=0.5) + # alpha -> controla a transparência
+  
+  geom_density(color="blue") +
+  
+  labs(x= "Days associated", y= "Density", title = "Histograma de frequências para Days associated") +
+  
+  theme_bw()
+
+days_associated_plot
+```
+
+```{r}
+# Health annual paid ================================
+
+health_annual_paid_plot <- num_attributes %>% 
+  
+  ggplot(aes(x=health_annual_paid)) + # informar o dado que irá no eixo da figura
+  
+  geom_histogram(aes(y=after_stat(density)),
+                 binwidth = 10000,
+                 color="red", 
+                 fill="green",
+                 alpha=0.5) + # alpha -> controla a transparência
+  
+  geom_density(color="blue") +
+  
+  labs(x= "Health annual paid", y= "Density", title = "Histograma de frequências para Health annual paid") +
+  
+  theme_bw()
+
+health_annual_paid_plot
+```
+
+```{r}
+# Unir os 3 histogramas anteriores
+
+gridExtra::grid.arrange(age_plot, days_associated_plot, health_annual_paid_plot,
+                        ncol=3)
+```
+
+```{r}
+# Removing unused objects
+
+rm(num_attributes)
+rm(num_attributes_stats)
+rm(age_plot)
+rm(days_associated_plot)
+rm(health_annual_paid_plot)
+gc()
 ```
 
 ### 2.2.2 Categorical attributes
 
 ```{r}
+categ_attributes %>% colnames
+```
 
+```{r}
+categ_attributes['vehicle_damage'] %>% table
+```
+
+```{r}
+
+# Gender ============================================================
+gender_plot <- categ_attributes %>% 
+  ggplot(aes(x=gender)) +
+  geom_bar(aes(fill=gender), color="black", show.legend = FALSE) +
+  labs(x="Gender", y="Count", title = "Barplot of Gender") +
+  theme_bw()
+
+# Driving license ===================================================
+driving_license_plot <- categ_attributes %>% 
+                        ggplot(aes(x=driving_license)) +
+                        geom_bar(aes(fill=driving_license), color="black", show.legend = FALSE) +
+                        labs(x="Driving License", y="Count", title = "Barplot of Driving License") +
+                        theme_bw()
+
+# Previously insured ===============================================
+previously_insuredr_plot <- categ_attributes %>% 
+  ggplot(aes(x=previously_insured)) +
+  geom_bar(aes(fill=previously_insured), color="black", show.legend = FALSE) +
+  labs(x="Previously insured", y="Count", title = "Barplot of Previously insured") +
+  theme_bw()
+
+
+# Vehicle age ======================================================
+vehicle_age_plot <- categ_attributes %>% 
+                    ggplot(aes(x=vehicle_age)) +
+                    geom_bar(aes(fill=vehicle_age), color="black", show.legend = FALSE) +
+                    labs(x="Vehicle age", y="Count", title = "Barplot of Vehicle age") +
+                    theme_bw()
+
+
+# Vehicle demage ==================================================
+vehicle_damage_plot <- categ_attributes %>% 
+                    ggplot(aes(x=vehicle_damage)) +
+                    geom_bar(aes(fill=vehicle_damage), color="black", show.legend = FALSE) +
+                    labs(x="Vehicle demage", y="Count", title = "Barplot of Vehicle demage") +
+                    theme_bw()
+
+
+# Response =======================================================
+response_plot <- categ_attributes %>% 
+                 ggplot(aes(x=response)) +
+                 geom_bar(aes(fill=response), color="black", show.legend = FALSE) +
+                 labs(x="Response", y="Count", title = "Barplot of Response") +
+                 theme_bw()
+
+
+
+
+# Figura multipainéis
+
+gridExtra::grid.arrange(gender_plot, driving_license_plot, previously_insuredr_plot,
+                        vehicle_age_plot, vehicle_damage_plot, response_plot,
+                        ncol=3)
+```
+
+```{r}
+# Getting rid of unused objects
+
+rm(categ_attributes)
+rm(driving_license_plot)
+rm(gender_plot)
+rm(previously_insuredr_plot)
+rm(response_plot)
+rm(vehicle_age_plot)
+rm(vehicle_damage_plot)
+gc()
 ```
 
 ## 2.2 Bivariate
