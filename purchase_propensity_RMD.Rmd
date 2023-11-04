@@ -28,6 +28,7 @@ install.packages("gtsummary")
 install.packages("summarytools")
 install.packages("kableExtra")
 install.packages("gridExtra")
+install.packages("vcdExtra")
 ```
 
 ## 0.1 - Importing libraries
@@ -39,6 +40,7 @@ library(janitor) # nomes de colunas em caixa baixa e espaços em _
 library(skimr) # gera um dataframe de estatísticas para variáveis numéricas
 library(gtsummary) # gera uma figura sumarizando as variáveis
 library(summarytools)
+library(vcdExtra)
 ```
 
 # 1 - Data loading, checking, cleaning and description
@@ -425,6 +427,24 @@ df %>%
 
 ```{r}
 df %>% 
+      ggplot(aes(y=age, x=driving_license)) +
+      stat_boxplot(geom='errorbar', width=0.6) +
+      geom_boxplot(aes(fill=driving_license), show.legend = FALSE) +
+      facet_wrap(vars(response)) +
+      labs(x="Driving license", title="Response (Yes/No) -> Age X Driving License")
+```
+
+```{r}
+df %>% 
+      ggplot(aes(y=age, x=vehicle_damage)) +
+      stat_boxplot(geom='errorbar', width=0.6) +
+      geom_boxplot(aes(fill=vehicle_damage), show.legend = FALSE) +
+      facet_wrap(vars(response)) +
+      labs(x="Vehicle damage", title="Response (Yes/No) -> Age X Vehicle damage")
+```
+
+```{r}
+df %>% 
       ggplot(aes(y=health_annual_paid, x=gender)) +
       stat_boxplot(geom='errorbar', width=0.6) +
       geom_boxplot(aes(fill=gender), show.legend = FALSE) +
@@ -441,6 +461,24 @@ df %>%
       labs(x="health_annual_paid", title="Response (Yes/No) -> Health Annual Paid X Vehicle Age") +
       theme(axis.text.x = element_text(angle = 45, hjust = 1)) # rotacionar x ticks
 
+```
+
+```{r}
+df %>% 
+      ggplot(aes(y=health_annual_paid, x=driving_license)) +
+      stat_boxplot(geom='errorbar', width=0.6) +
+      geom_boxplot(aes(fill=driving_license), show.legend = FALSE) +
+      facet_wrap(vars(response)) +
+      labs(x="Driving license", title="Response (Yes/No) -> Health annual paid X Driving License")
+```
+
+```{r}
+df %>% 
+      ggplot(aes(y=health_annual_paid, x=vehicle_damage)) +
+      stat_boxplot(geom='errorbar', width=0.6) +
+      geom_boxplot(aes(fill=vehicle_damage), show.legend = FALSE) +
+      facet_wrap(vars(response)) +
+      labs(x="Vehicle damage", title="Response (Yes/No) -> Health annual paid X Vehicle damage")
 ```
 
 ```{r}
@@ -466,52 +504,103 @@ df %>%
 ### Categóricas X Categóricas
 
 ```{r}
-# Categóricas X Categóricas
+# Vehicle age X Gender
 
-# Driving licence
-df %>% 
-  ggplot(aes(x=driving_license)) +
-  geom_bar(aes(fill=driving_license)) +
-  facet_wrap(vars(response), scales="free_y") +
-  labs(title="driving_license x Response")
-```
-
-```{r}
-df %>% 
-  ggplot(aes(x=gender)) +
-  geom_bar(aes(fill=gender)) +
-  facet_wrap(vars(response), scales="free_y") +
-  labs(title="Gender x Response")
-
-```
-
-```{r}
-# Vehicle damage
-df %>% 
-  ggplot(aes(x=vehicle_damage)) +
-  geom_bar(aes(fill=vehicle_damage)) +
-  facet_wrap(vars(response), scales="free_y") +
-  labs(title="Vehicle damage x Response")
-```
-
-```{r}
-# Vehicle damage
 df %>% 
   ggplot(aes(x=vehicle_age)) +
-  geom_bar(aes(fill=vehicle_age)) +
+  geom_bar(aes(fill=gender), position = "dodge") +
   facet_wrap(vars(response), scales="free_y") +
-  labs(title="vehicle_age x Response") +
+  labs(x="Vehicle age", title="Response (Yes/No) -> Vehicle age X Gender") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) # rotacionar x ticks
 ```
 
 ```{r}
-df 
+# Vehicle age X Vehicle damage
+
+df %>% 
+  ggplot(aes(x=vehicle_age)) +
+  geom_bar(aes(fill=vehicle_damage), position = "dodge") +
+  facet_wrap(vars(response), scales="free_y") +
+  labs(x="Vehicle age", title="Response (Yes/No) -> Vehicle age X Vehicle damage") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) # rotacionar x ticks
+```
+
+```{r}
+# Vehicle age X Driving licence
+ 
+df %>% 
+  ggplot(aes(x=vehicle_age)) +
+  geom_bar(aes(fill=driving_license), position = "dodge") +
+  facet_wrap(vars(response), scales="free_y") +
+  labs(x="Vehicle age", title="Response (Yes/No) -> Vehicle age X Driving license") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) # rotacionar x ticks
+```
+
+```{r}
+# Vehicle damage X Gender
+
+df %>% 
+  ggplot(aes(x=vehicle_damage)) +
+  geom_bar(aes(fill=gender), position = "dodge") +
+  facet_wrap(vars(response), scales="free_y") +
+  labs(x="Vehicle Damage", title="Response (Yes/No) -> Vehicle Damage X Gender") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) # rotacionar x ticks
+```
+
+```{r}
+# Vehicle damage X Driving license
+
+df %>% 
+  ggplot(aes(x=vehicle_damage)) +
+  geom_bar(aes(fill=driving_license), position = "dodge") +
+  facet_wrap(vars(response), scales="free_y") +
+  labs(x="Vehicle Damage", title="Response (Yes/No) -> Vehicle Damage X Driving license") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) # rotacionar x ticks
+```
+
+```{r}
+# Driving license X Gender
+
+df %>% 
+  ggplot(aes(x=gender)) +
+  geom_bar(aes(fill=driving_license), position = "dodge") +
+  facet_wrap(vars(response), scales="free_y") +
+  labs(x="Gender", title="Response (Yes/No) -> Gender X Driving license") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) # rotacionar x ticks
 ```
 
 ## 2.3 Multivariate
 
 ```{r}
+# Correlação entre variáveis numéricas
 
+df %>% 
+  select(age, health_annual_paid, days_associated) %>% 
+  cor %>%
+  as.table %>% 
+  data.frame %>% 
+  ggplot(aes(Var1, Var2, fill = Freq, label = round(Freq, 2))) +
+  geom_tile() +
+  geom_text(color = "black") + # exibit o valor numérico das correlações
+  scale_fill_gradient(low = "lightgreen", high = "green") +
+  theme_minimal() +
+  labs(x = "", y = "") +
+  theme(legend.position = "right") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  guides(fill = guide_colorbar(title = "Correlation"))
+```
+
+```{r}
+library(data.table)
+
+# Correlação entre variáveis categóricas
+
+df %>% 
+  select(vehicle_age, vehicle_damage, driving_license, gender, response) %>%
+  as.data.table %>% 
+  v_cramer_all(cat_var = c("vehicle_age", "vehicle_damage", "driving_license", "gender", "response"), df = df)
+
+  
 ```
 
 ```{r}
