@@ -28,7 +28,6 @@ install.packages("gtsummary")
 install.packages("summarytools")
 install.packages("kableExtra")
 install.packages("gridExtra")
-install.packages("vcdExtra")
 ```
 
 ## 0.1 - Importing libraries
@@ -40,7 +39,6 @@ library(janitor) # nomes de colunas em caixa baixa e espaços em _
 library(skimr) # gera um dataframe de estatísticas para variáveis numéricas
 library(gtsummary) # gera uma figura sumarizando as variáveis
 library(summarytools)
-library(vcdExtra)
 ```
 
 # 1 - Data loading, checking, cleaning and description
@@ -591,18 +589,53 @@ df %>%
 ```
 
 ```{r}
-library(data.table)
 
-# Correlação entre variáveis categóricas
-
-df %>% 
-  select(vehicle_age, vehicle_damage, driving_license, gender, response) %>%
-  as.data.table %>% 
-  v_cramer_all(cat_var = c("vehicle_age", "vehicle_damage", "driving_license", "gender", "response"), df = df)
-
-  
 ```
 
 ```{r}
+# Função para calcular a correlação Cramer V =================================
+cramer_v <- function(x, y) {
+  contingency_table <- table(x, y)
+  chi2 <- chisq.test(contingency_table)$statistic
+  n <- sum(contingency_table)
+  phi2 <- chi2 / n
+  r <- min(length(unique(x)) - 1, length(unique(y)) - 1)
+  cramer_v <- sqrt(phi2 / r)
+  return(cramer_v)
+}
+```
+
+```{r}
+categorical_data <- df %>% 
+  select(gender, vehicle_age, vehicle_damage, driving_license, response)
+
+# Calcular a matriz de correlação Cramer V
+correlation_matrix <- outer(
+  names(categorical_data),
+  names(categorical_data),
+  Vectorize(function(x, y) cramer_v(categorical_data[[x]], categorical_data[[y]])
+  )
+)
+
+# Atribuir nomes às linhas e colunas da matriz de correlação
+colnames(correlation_matrix) <- rownames(correlation_matrix) <- names(categorical_data)
+
+# Transformar a matriz em um tibble longo
+correlation_data <- as.data.frame(as.table(correlation_matrix))
+names(correlation_data) <- c("Var1", "Var2", "Freq")
+
+ggplot(data = correlation_data, aes(x = Var1, y = Var2, fill = Freq, label = round(Freq, 2))) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "blue") +
+  theme_minimal() +
+  labs(x = "", y = "") +
+  labs(title = "Cramer's V correlation heatmap") +
+  geom_text(size = 3, color = "black") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  guides(fill = guide_colorbar(title = "Correlation"))
+```
+
+```{r}
+df
 
 ```
