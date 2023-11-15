@@ -28,6 +28,7 @@ install.packages("gtsummary")
 install.packages("summarytools")
 install.packages("kableExtra")
 install.packages("gridExtra")
+install.packages("rsample")
 ```
 
 ## 0.1 - Importing libraries
@@ -39,6 +40,7 @@ library(janitor) # nomes de colunas em caixa baixa e espaços em _
 library(skimr) # gera um dataframe de estatísticas para variáveis numéricas
 library(gtsummary) # gera uma figura sumarizando as variáveis
 library(summarytools)
+library(rsample) # split de treino e teste
 ```
 
 # 1 - Data loading, checking, cleaning and description
@@ -633,6 +635,46 @@ ggplot(data = correlation_data, aes(x = Var1, y = Var2, fill = Freq, label = rou
   geom_text(size = 3, color = "black") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))+
   guides(fill = guide_colorbar(title = "Correlation"))
+```
+
+```{r}
+# Eliminando objetos adicionais
+
+rm(categorical_data)
+rm(correlation_data)
+rm(correlation_matrix)
+rm(cramer_v)
+```
+
+# 3 - Data praparation
+
+## 3.1 Train/test split
+
+```{r}
+
+# Definindo o objeto splitter
+splitter <- df %>% 
+                  rsample::initial_split(prop = 0.75, strata = response)
+
+df_train <- splitter %>% 
+                        rsample::training()
+
+df_test <- splitter %>%
+                        rsample::testing()
+```
+
+```{r}
+# Checking response variable proportions
+
+df_train %>% 
+  select(response) %>% 
+  tbl_summary(type = list(response ~ "categorical"))
+
+
+df_test %>% 
+  select(response) %>% 
+  tbl_summary(type = list(response ~ "categorical"))
+
 ```
 
 ```{r}
