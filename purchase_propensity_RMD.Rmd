@@ -41,6 +41,7 @@ library(skimr) # gera um dataframe de estatísticas para variáveis numéricas
 library(gtsummary) # gera uma figura sumarizando as variáveis
 library(summarytools)
 library(rsample) # split de treino e teste
+library(recipes) # receita de pré-processamento
 ```
 
 # 1 - Data loading, checking, cleaning and description
@@ -646,38 +647,194 @@ rm(correlation_matrix)
 rm(cramer_v)
 ```
 
-# 3 - Data praparation
+# 3 - Data preparation
 
 ## 3.1 Train/test split
 
 ```{r}
+# Setting seed
+base::set.seed(123)
 
 # Definindo o objeto splitter
 splitter <- df %>% 
                   rsample::initial_split(prop = 0.75, strata = response)
 
+# Train split
 df_train <- splitter %>% 
                         rsample::training()
 
+# Test split
 df_test <- splitter %>%
                         rsample::testing()
 ```
 
 ```{r}
-# Checking response variable proportions
+## Checking response variable proportions
+#
+#df_train %>% 
+#  select(response) %>% 
+#  tbl_summary(type = list(response ~ "categorical"))
+#
+#
+#df_test %>% 
+#  select(response) %>% 
+#  tbl_summary(type = list(response ~ "categorical"))
+#
+```
 
-df_train %>% 
-  select(response) %>% 
-  tbl_summary(type = list(response ~ "categorical"))
+## 3.2 Preprocessing
+
+```{r}
+
+# ========================== Transformações nos dados ==============================
+
+# Normalização (transformar para média 1 e std 0) -> age, days_associated
+
+# Scale (transformar para std 1) -> health_annual_paid
+
+# ===================================================================================
 
 
-df_test %>% 
-  select(response) %>% 
-  tbl_summary(type = list(response ~ "categorical"))
+# Definindo a receita
 
+reciper <- recipes::recipe(response ~.,
+                           data=df_train) %>% 
+                    step_normalize(age, days_associated) %>% # transformar para média 1 e std 0
+                    step_scale(health_annual_paid) %>% # transformar para std 1
+                    step_dummy(driving_license,
+                               previously_insured,
+                               vehicle_age,
+                               vehicle_damage, -all_outcomes()) # transformar para one-hot
+
+
+# Preparando a receita
+recipe_preparer <- reciper %>% 
+                      prep(training = df_train)
+
+# Cozinhando a receita (processando o dado)
+
+df_train <- recipe_preparer %>% 
+                      bake(new_data = df_train)
+
+df_test <- recipe_preparer %>% 
+                      bake(new_data = df_test)
 ```
 
 ```{r}
-df
+rm(splitter)
+rm(recipe_preparer)
+rm(reciper)
+rm(df)
+```
+
+```{r}
+
+# ========================================
+# Target encoding -> gender, region_code
+# ========================================
+
+# Definindo os encoders para "gender" e "region_code":
+
+# Gender -> target encoding (proportion of "yes" in gender values)
+gender_encoder <-  df_train %>% 
+                    mutate(response_num = ifelse(response == "yes", 1,0)) %>% 
+                    group_by(gender) %>%
+                    summarise(gender_num = mean(response_num, na.rm= TRUE))
+
+
+# Region code -> target encoding (proportion of "yes" in region_code values)
+region_code_encoder <-  df_train %>% 
+                    mutate(response_num = ifelse(response == "yes", 1,0)) %>% 
+                    group_by(region_code) %>%
+                    summarise(region_code_num = mean(response_num, na.rm= TRUE))
+
+region_code_encoder
+```
+
+```{r}
+# ============================================
+# Frequency encoding -> policy_sales_channel
+# ============================================
+
+# Gerando a proporção de vezes que cada nível da variável "policy_sales_channel_num" aparece
+
+# Definindo o encoder:
+
+policy_sales_channel_encoder <- df_train %>% 
+                                group_by(policy_sales_channel) %>% 
+                                summarise(policy_sales_channel_num = n()/dim(df_train)[1])
+```
+
+```{r}
+# Saving encoders
+
+saveRDS(gender_encoder, "gender_encoder.rds")
+saveRDS(region_code_encoder, "region_code_encoder.rds")
+saveRDS(policy_sales_channel_encoder, "policy_sales_channel_encoder.rds")
+```
+
+```{r}
+# Applying encoders
+
+# Loading encoders
+gender_encoder <- readRDS("gender_encoder.rds")
+region_code_encoder <- readRDS("region_code_encoder.rds")
+policy_sales_channel_encoder <- readRDS("policy_sales_channel_encoder.rds")
+```
+
+```{r}
+
+# Applying loaded encoders:
+
+# Gender
+
+df_train <- df_train %>% 
+            left_join(gender_encoder) %>% 
+            select(-gender) %>% 
+            rename(gender = gender_num)
+
+df_test <- df_test %>% 
+            left_join(gender_encoder) %>% 
+            select(-gender) %>% 
+            rename(gender = gender_num)
+
+
+# Region code
+
+df_train <- df_train %>% 
+            left_join(region_code_encoder) %>% 
+            select(-region_code) %>% 
+            rename(region_code = region_code_num)
+
+df_test <- df_test %>% 
+            left_join(region_code_encoder) %>% 
+            select(-region_code) %>% 
+            rename(region_code = region_code_num)
+
+
+
+# Policy sales channel
+
+df_train <- df_train %>% 
+            left_join(policy_sales_channel_encoder) %>% 
+            select(-policy_sales_channel) %>% 
+            rename(policy_sales_channel = policy_sales_channel_num)
+
+df_test <- df_test %>% 
+            left_join(policy_sales_channel_encoder) %>% 
+            select(-policy_sales_channel) %>% 
+            rename(policy_sales_channel = policy_sales_channel_num)
+```
+
+```{r}
+# Removing objects
+
+rm(gender_encoder)
+rm(policy_sales_channel_encoder)
+rm(region_code_encoder)
+```
+
+```{r}
+df_train
 
 ```
