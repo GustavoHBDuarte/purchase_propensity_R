@@ -29,6 +29,7 @@ install.packages("summarytools")
 install.packages("kableExtra")
 install.packages("gridExtra")
 install.packages("rsample")
+install.packages("randomForest")
 ```
 
 ## 0.1 - Importing libraries
@@ -42,6 +43,7 @@ library(gtsummary) # gera uma figura sumarizando as variáveis
 library(summarytools)
 library(rsample) # split de treino e teste
 library(recipes) # receita de pré-processamento
+library(randomForest)
 ```
 
 # 1 - Data loading, checking, cleaning and description
@@ -837,4 +839,90 @@ rm(region_code_encoder)
 ```{r}
 df_train
 
+```
+
+## 3.3 Feature selection
+
+```{r}
+# Feature selection
+
+# Selecionando os preditores e a variável resposta
+
+predictors <- df_train %>% 
+  select(-id, -response)
+
+target <- df_train['response']
+
+target <- df_train$response
+```
+
+```{r}
+# Treinando o classificador
+
+
+# OBSERVAÇÕES IMPORTANTES:
+
+# 1- A variável resposta deve ser passada como um vetor de valores
+# 2- O comprimento (função lenght) de preditores e do target deve ser o mesmo
+
+
+# No dataframe dos preditores serão removidas as colunas "id" e "response" pois ambas
+# não são features do modelo
+
+start_time <- Sys.time() # coletando o tempo do início da execução
+
+rf_feature_selector <- randomForest::randomForest(df_train %>% 
+                                                    select(-id, -response), # preditores
+                                                  df_train$response, # target
+                                                  importance = TRUE,
+                                                  ntree=10)
+
+
+end_time <- Sys.time() # coletando o tempo do início da execução
+
+
+#calculando o tempo total da execução
+total_time <- end_time - start_time 
+
+
+
+print(total_time)
+```
+
+```{r}
+
+importance(rf_feature_selector)
+```
+
+```{r}
+varImpPlot(rf_feature_selector)
+```
+
+```{r}
+# 7 variáveis mais significativas/importantes
+
+
+important_features <- 
+  
+  importance(rf_feature_selector) %>% 
+  
+  as_tibble(rownames='rowname') %>% # converter o objeto como tibble
+  
+  arrange(desc(MeanDecreaseGini)) %>% #fazer o sort decrescente
+  
+  select(rowname) %>% # selecionar a coluna com o nome das variáveis
+  
+  slice(1:7) %>% # fazer o slicing das 7 features mais importantes
+  
+  pull() # converter o tibble de 1 coluna para um vetor de valores
+
+
+important_features
+```
+
+```{r}
+# Filtrar as variáveis selecionadas no df
+
+df_train %>% 
+  select(all_of(important_features))
 ```
