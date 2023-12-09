@@ -926,3 +926,27 @@ important_features
 df_train %>% 
   select(all_of(important_features))
 ```
+
+```{r}
+# Removing variables
+
+rm(rf_feature_selector)
+rm(total_time)
+rm(start_time)
+rm(end_time)
+```
+
+# 4 - Machine learning
+
+```{r}
+recall_
+```
+
+```{r}
+df_train
+
+```
+
+```{r}
+
+```
