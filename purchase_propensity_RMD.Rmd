@@ -30,6 +30,8 @@ install.packages("kableExtra")
 install.packages("gridExtra")
 install.packages("rsample")
 install.packages("randomForest")
+install.packages('C50')
+install.packages('xgboost')
 ```
 
 ## 0.1 - Importing libraries
@@ -44,6 +46,8 @@ library(summarytools)
 library(rsample) # split de treino e teste
 library(recipes) # receita de pré-processamento
 library(randomForest)
+library(parsnip) # modelos de ML
+library(yardstick) # métricas de modelos de ML
 ```
 
 # 1 - Data loading, checking, cleaning and description
@@ -938,15 +942,144 @@ rm(end_time)
 
 # 4 - Machine learning
 
+## 4.1 - Logistic Regression
+
 ```{r}
-recall_
+# Logistic regression
+
+# Model definition:
+lr_model <- logistic_reg() %>% 
+  set_engine("glm") %>% 
+  set_mode("classification")
+
+
+# Model training
+set.seed(123)
+  lr_model_fit <- lr_model %>% fit(response~ .,
+                                   data = df_train %>% select(all_of(important_features), response))
+  
+
+# Model predictions
+class_predictions <- lr_model_fit %>% predict(new_data = df_test %>% select(all_of(important_features), -response), type = 'class')
+
+prob_predictions <- lr_model_fit %>% predict(new_data = df_test %>% select(all_of(important_features), -response), type = 'prob')
+
+# Results
+
+lr_results <- df_test %>% select(id, response) %>% bind_cols(class_predictions, prob_predictions)
+
+
+# Confusion matrix
+
+lr_confusion_matrix <- lr_results %>% yardstick::conf_mat(truth=response,
+                                                          estimate = .pred_class)
+```
+
+```{lr_results %>% yardstick::conf_mat(truth=response,                                                        estimate = .pred_class)}
+```
+
+## 4.2 - Decision Tree
+
+```{r}
+# Decision Tree
+
+# Model definition:
+dt_model <- decision_tree() %>% 
+  set_engine("C5.0") %>% 
+  set_mode("classification")
+
+
+# Model training
+set.seed(123)
+  dt_model_fit <- dt_model %>% fit(response~ .,
+                                   data = df_train %>% select(all_of(important_features), response))
+  
+
+# Model predictions
+class_predictions <- dt_model_fit %>% predict(new_data = df_test %>% select(all_of(important_features), -response), type = 'class')
+
+prob_predictions <- dt_model_fit %>% predict(new_data = df_test %>% select(all_of(important_features), -response), type = 'prob')
+
+# Results
+
+dt_results <- df_test %>% select(id, response) %>% bind_cols(class_predictions, prob_predictions)
+
+
+# Confusion matrix
+
+dt_confusion_matrix <- dt_results %>% yardstick::conf_mat(truth=response,
+                                                          estimate = .pred_class)
 ```
 
 ```{r}
-df_train
 
 ```
 
 ```{r}
+dt_results %>% yardstick::conf_mat(truth=response,
+                                                          estimate = .pred_class)
+```
 
+## 4.3 XGBoost
+
+```{r}
+# XGBoost
+
+# Model definition:
+xgb_model <- boost_tree(trees = 15) %>% 
+  set_engine("xgboost") %>% 
+  set_mode("classification")
+
+
+# Model training
+set.seed(123)
+  xgb_model_fit <- xgb_model %>% fit(response~ .,
+                                   data = df_train %>% select(all_of(important_features), response))
+  
+
+# Model predictions
+class_predictions <- xgb_model_fit %>% predict(new_data = df_test %>% select(all_of(important_features), -response), type = 'class')
+
+prob_predictions <- xgb_model_fit %>% predict(new_data = df_test %>% select(all_of(important_features), -response), type = 'prob')
+
+# Results
+
+xgb_results <- df_test %>% select(id, response) %>% bind_cols(class_predictions, prob_predictions)
+
+
+# Confusion matrix
+
+xgb_confusion_matrix <- xgb_results %>% yardstick::conf_mat(truth=response,
+                                                          estimate = .pred_class)
+```
+
+```{r}
+xgb_results %>% yardstick::conf_mat(truth=response,
+                                                          estimate = .pred_class)
+```
+
+```{r}
+# Armazenando os modelos em disco
+
+saveRDS(lr_model_fit, "LogisticRegression_fitted.rds")
+saveRDS(dt_model_fit, "DecisionTree_fitted.rds")
+saveRDS(xgb_model_fit, "XGB_fitted.rds")
+```
+
+```{r}
+# Removing model objects to release memory
+
+rm(lr_model_fit)
+rm(dt_model_fit)
+rm(xgb_model_fit)
+rm(lr_model)
+rm(dt_model)
+rm(xgb_model)
+```
+
+```{r}
+xgb_model_fit <-  base::readRDS("XGB_fitted.rds")
+```
+
+```{}
 ```
