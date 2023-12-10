@@ -42,12 +42,44 @@ library(readr) # leitura de arquivos .csv
 library(janitor) # nomes de colunas em caixa baixa e espaços em _
 library(skimr) # gera um dataframe de estatísticas para variáveis numéricas
 library(gtsummary) # gera uma figura sumarizando as variáveis
+library(gridExtra) # empilhar figuras
 library(summarytools)
 library(rsample) # split de treino e teste
 library(recipes) # receita de pré-processamento
 library(randomForest)
 library(parsnip) # modelos de ML
 library(yardstick) # métricas de modelos de ML
+```
+
+## 0.2 - Functions
+
+```{r}
+# Precision and Recall @ k
+
+precision_recall_at_k <- function(df_model_results, k=50){
+  
+  df_model_results %>%  arrange(desc(.pred_yes)) %>% # Ordenar da maior prob de yes p/ a menor
+  
+  mutate(
+    TP = ifelse(response=='yes' & .pred_class=="yes", 1, 0),
+    TN = ifelse(response=='no' & .pred_class=="no", 1, 0),
+    FP = ifelse(response=='no' & .pred_class=="yes", 1, 0),
+    FN = ifelse(response=='yes' & .pred_class=="no", 1, 0) # Definir TP, TN, FP, FN
+  ) %>% 
+  
+  dplyr_row_slice(1:k) %>% # Fazer o slicing das k linhas
+  
+  mutate(
+    precision_at_k = TP %>% sum()/(TP %>% sum() + FP %>% sum()),
+    recall_at_k = TP %>% sum()/(TP %>% sum() + FN %>% sum()) # Calcular precision e recall
+  ) %>% 
+  
+  select(precision_at_k, recall_at_k) %>% # Selecionar as colunas de precision e recall
+  
+  dplyr_row_slice(k) # Filtrar a última linha
+  
+  
+}
 ```
 
 # 1 - Data loading, checking, cleaning and description
@@ -1020,7 +1052,7 @@ dt_results %>% yardstick::conf_mat(truth=response,
                                                           estimate = .pred_class)
 ```
 
-## 4.3 XGBoost
+## 4.3 - XGBoost
 
 ```{r}
 # XGBoost
@@ -1075,11 +1107,82 @@ rm(xgb_model_fit)
 rm(lr_model)
 rm(dt_model)
 rm(xgb_model)
+rm(class_predictions)
+rm(prob_predictions)
 ```
 
 ```{r}
+# Loading XGB model object
+
 xgb_model_fit <-  base::readRDS("XGB_fitted.rds")
 ```
 
-```{}
+## Model metrics
+
+```{r}
+# Results report
+k = 5000
+
+precision_recall_at_k(lr_results, k=k) %>% 
+  
+  bind_rows(precision_recall_at_k(dt_results, k=k)) %>% 
+  
+  bind_rows(precision_recall_at_k(xgb_results, k=k)) %>% 
+  
+  mutate(algorithm = c("Logistic Regression", "Decision Tree", "XGBoost")) %>%
+  
+  select(algorithm, precision_at_k, recall_at_k)
 ```
+
+## Cumulative gain and lift curves
+
+```{r}
+gridExtra::grid.arrange(
+  
+  # Gain curve
+  
+  ## Logistic regression
+  lr_results %>% gain_curve(truth = response, .pred_yes) %>% 
+  parsnip::autoplot() +
+  labs(title="Cumulative gain curve: Logistic Regression"),
+  
+  ## Decision tree
+  dt_results %>% gain_curve(truth = response, .pred_yes) %>% 
+  parsnip::autoplot() +
+  labs(title="Cumulative gain curve: Decision Tree"),
+  
+  
+  ## XGBoost
+  xgb_results %>% gain_curve(truth = response, .pred_yes) %>% 
+  parsnip::autoplot() +
+  labs(title="Cumulative gain curve: XGB")
+  
+)
+```
+
+```{r}
+gridExtra::grid.arrange(
+  
+  # Lift curve
+  
+  ## Logistic regression
+  lr_results %>% lift_curve(truth = response, .pred_yes) %>% 
+  parsnip::autoplot() +
+  labs(title="Cumulative gain curve: Logistic Regression"),
+  
+  ## Decision tree
+  dt_results %>% lift_curve(truth = response, .pred_yes) %>% 
+  parsnip::autoplot() +
+  labs(title="Cumulative gain curve: Decision Tree"),
+  
+  
+  ## XGBoost
+  xgb_results %>% lift_curve(truth = response, .pred_yes) %>% 
+  parsnip::autoplot() +
+  labs(title="Cumulative gain curve: XGB")
+  
+)
+```
+
+\
+\
