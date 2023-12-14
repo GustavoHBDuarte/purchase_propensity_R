@@ -32,6 +32,7 @@ install.packages("rsample")
 install.packages("randomForest")
 install.packages('C50')
 install.packages('xgboost')
+install.packages('dials')
 ```
 
 ## 0.1 - Importing libraries
@@ -80,6 +81,18 @@ precision_recall_at_k <- function(df_model_results, k=50){
   
   
 }
+```
+
+## 0.3 - R version
+
+```{r}
+# Armazena o retorno do comando sessionInfo() em uma variável
+session_info <- sessionInfo()
+
+session_info_text <- paste(session_info, collapse = "\n")
+
+# Salva o retorno em um arquivo
+writeLines(session_info_text, "session_info.txt")
 ```
 
 # 1 - Data loading, checking, cleaning and description
@@ -745,6 +758,7 @@ reciper <- recipes::recipe(response ~.,
                                vehicle_damage, -all_outcomes()) # transformar para one-hot
 
 
+
 # Preparando a receita
 recipe_preparer <- reciper %>% 
                       prep(training = df_train)
@@ -1184,5 +1198,87 @@ gridExtra::grid.arrange(
 )
 ```
 
-\
-\
+## K-fold cross validation
+
+```{r}
+# ============== train-test Split ==============================
+
+# Setting seed
+base::set.seed(123)
+
+# Definindo o objeto splitter
+splitter <- df %>% 
+                  rsample::initial_split(prop = 0.75, strata = response)
+
+# Train split
+df_train <- splitter %>% 
+                        rsample::training()
+
+# Test split
+df_test <- splitter %>%
+                        rsample::testing()
+
+
+
+# ========================== Transformações nos dados ==============================
+
+# Normalização (transformar para média 1 e std 0) -> age, days_associated
+
+# Scale (transformar para std 1) -> health_annual_paid
+
+# ===================================================================================
+
+# COLOCAR OS ENCODERS DE MÉDIA
+
+
+# Definindo a receita
+
+reciper <- recipes::recipe(response ~.,
+                           data=df_train) %>% 
+                    step_normalize(age, days_associated) %>% # transformar para média 1 e std 0
+                    step_scale(health_annual_paid) %>% # transformar para std 1
+                    step_dummy(driving_license,
+                               previously_insured,
+                               vehicle_age,
+                               vehicle_damage, -all_outcomes()) # transformar para one-hot
+
+
+ 
+# ==================== k-folds ======================================================
+
+# ===================================================================================
+
+k_folder <- df_train %>% rsample::vfold_cv(v = 10, strata = response)
+
+
+
+# ==================== Machine learning =============================================
+
+# ===================================================================================
+
+
+# Logistic regression
+
+## serão tunados os hiperparâmetros penalty e mixture (controlam o grau de regularização)
+### função parsnip::tune() deve ser passada junto ao hiperparâmetro
+
+# Model definition:
+lr_model <- logistic_reg(penalty = tune(), mixture = tune()) %>% 
+  set_engine("glmnet") %>% 
+  set_mode("classification")
+
+#hardhat::extract_parameter_set_dials(lr_model)
+```
+
+##  
+
+```{r}
+# Model definition:
+lr_model <- logistic_reg(penalty = tune(), mixture = tune()) %>% 
+  set_engine("glmnet") %>% 
+  set_mode("classification")
+
+hardhat::extract_parameter_set_dials(lr_model)
+```
+
+##  
