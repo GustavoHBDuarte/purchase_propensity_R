@@ -33,6 +33,9 @@ install.packages("randomForest")
 install.packages('C50')
 install.packages('xgboost')
 install.packages('dials')
+install.packages("glmnet")
+install.packages("doParallel")
+install.packages("tune")
 ```
 
 ## 0.1 - Importing libraries
@@ -50,6 +53,9 @@ library(recipes) # receita de pré-processamento
 library(randomForest)
 library(parsnip) # modelos de ML
 library(yardstick) # métricas de modelos de ML
+library(glmnet) # algoritmo para regressão logística
+library(doParallel) # Paralelização de processos
+library(tune)
 ```
 
 ## 0.2 - Functions
@@ -1198,7 +1204,7 @@ gridExtra::grid.arrange(
 )
 ```
 
-## K-fold cross validation
+## Cross validation
 
 ```{r}
 # ============== train-test Split ==============================
@@ -1263,14 +1269,37 @@ k_folder <- df_train %>% rsample::vfold_cv(v = 10, strata = response)
 ### função parsnip::tune() deve ser passada junto ao hiperparâmetro
 
 # Model definition:
-lr_model <- logistic_reg(penalty = tune(), mixture = tune()) %>% 
+lr_model <- logistic_reg(
+  penalty = tune(),
+  mixture = tune()
+  ) %>% 
   set_engine("glmnet") %>% 
   set_mode("classification")
 
 #hardhat::extract_parameter_set_dials(lr_model)
+
+
+# Defining grid
+
+lr_grid <- extract_parameter_set_dials(lr_model) %>% grid_regular(levels = 5)
+
+doParallel::registerDoParallel() # paralelização de execuções
+
+start_time <- Sys.time()
+
+
+# tuning the model
+lr_tune <- tune_grid(lr_model,
+                     reciper,
+                     resamples = k_folder,
+                     grid = lr_grid)
+
+end_time <- Sys.time()
+
+print(start_time - end_time)
 ```
 
-##  
+## 
 
 ```{r}
 # Model definition:
@@ -1281,4 +1310,4 @@ lr_model <- logistic_reg(penalty = tune(), mixture = tune()) %>%
 hardhat::extract_parameter_set_dials(lr_model)
 ```
 
-##  
+## 
