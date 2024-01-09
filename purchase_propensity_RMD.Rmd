@@ -56,6 +56,8 @@ library(yardstick) # métricas de modelos de ML
 library(glmnet) # algoritmo para regressão logística
 library(doParallel) # Paralelização de processos
 library(tune)
+library(dials)
+library(workflows)
 ```
 
 ## 0.2 - Functions
@@ -782,7 +784,6 @@ df_test <- recipe_preparer %>%
 rm(splitter)
 rm(recipe_preparer)
 rm(reciper)
-rm(df)
 ```
 
 ```{r}
@@ -1027,7 +1028,9 @@ lr_confusion_matrix <- lr_results %>% yardstick::conf_mat(truth=response,
                                                           estimate = .pred_class)
 ```
 
-```{lr_results %>% yardstick::conf_mat(truth=response,                                                        estimate = .pred_class)}
+```{r}
+
+lr_results %>% yardstick::conf_mat(truth=response,                                                        estimate = .pred_class)
 ```
 
 ## 4.2 - Decision Tree
@@ -1207,13 +1210,65 @@ gridExtra::grid.arrange(
 ## Cross validation
 
 ```{r}
+
+# carregar novamente o df inicial após tratamento
+df <- readRDS('df_cleaned.rds')
+
+# COLOCAR OS ENCODERS DE MÉDIA
+
+# ========================== Transformações nos dados ==============================
+
+# Normalização (transformar para média 1 e std 0) -> age, days_associated
+
+# Scale (transformar para std 1) -> health_annual_paid
+
+# One-hot -> driving_license, previoulsy_insured, vehicle_age, vehicle_damage
+
+# Target encoding -> gender, region_code
+
+# Frequency encoding -> policy_sales_channel
+
+# ===================================================================================
+
+# Applying encoders
+
+# Loading encoders
+gender_encoder <- readRDS("gender_encoder.rds")
+region_code_encoder <- readRDS("region_code_encoder.rds")
+policy_sales_channel_encoder <- readRDS("policy_sales_channel_encoder.rds")
+
+
+# Applying loaded encoders:
+
+# Gender
+
+df_encoded <- df %>% 
+            left_join(gender_encoder) %>% 
+            select(-gender) %>% 
+            rename(gender = gender_num)
+
+# Region code
+
+df_encoded <- df_encoded %>% 
+            left_join(region_code_encoder) %>% 
+            select(-region_code) %>% 
+            rename(region_code = region_code_num)
+
+
+# Policy sales channel
+
+df_encoded <- df_encoded %>% 
+            left_join(policy_sales_channel_encoder) %>% 
+            select(-policy_sales_channel) %>% 
+            rename(policy_sales_channel = policy_sales_channel_num)
+
 # ============== train-test Split ==============================
 
 # Setting seed
 base::set.seed(123)
 
 # Definindo o objeto splitter
-splitter <- df %>% 
+splitter <- df_encoded %>% 
                   rsample::initial_split(prop = 0.75, strata = response)
 
 # Train split
@@ -1225,16 +1280,6 @@ df_test <- splitter %>%
                         rsample::testing()
 
 
-
-# ========================== Transformações nos dados ==============================
-
-# Normalização (transformar para média 1 e std 0) -> age, days_associated
-
-# Scale (transformar para std 1) -> health_annual_paid
-
-# ===================================================================================
-
-# COLOCAR OS ENCODERS DE MÉDIA
 
 
 # Definindo a receita
@@ -1296,18 +1341,44 @@ lr_tune <- tune_grid(lr_model,
 
 end_time <- Sys.time()
 
-print(start_time - end_time)
+print(end_time - start_time)
+
+
+# Selecting the best model hyperparameters
+lr_best_hyperparam <- lr_tune %>% select_best("roc_auc")
+
+
+# Applying the best hyperparameters to the model
+lr_best_model <- finalize_model(lr_model, lr_best_hyperparam)
+
+
+
+# Creating workflow
+lr_workflow <- workflow() %>% 
+  add_model(lr_best_model) %>% 
+  add_recipe(reciper)
+
+
+
+# Train final model
+doParallel::registerDoParallel() # paralelização de execuções
+
+
+start_time <- Sys.time()
+
+
+lr_result <- last_fit(lr_workflow, splitter) # model training
+
+
+end_time <- Sys.time()
+
+print(end_time - start_time)
 ```
 
-## 
-
 ```{r}
-# Model definition:
-lr_model <- logistic_reg(penalty = tune(), mixture = tune()) %>% 
-  set_engine("glmnet") %>% 
-  set_mode("classification")
+# Confusion Matrix
 
-hardhat::extract_parameter_set_dials(lr_model)
+lr_result %>% unnest(.predictions) %>% conf_mat(truth = response, estimate = .pred_class)
 ```
 
 ## 
