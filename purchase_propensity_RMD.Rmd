@@ -30,6 +30,7 @@ install.packages("kableExtra")
 install.packages("gridExtra")
 install.packages("rsample")
 install.packages("randomForest")
+install.packages("ranger")
 install.packages('C50')
 install.packages('xgboost')
 install.packages('dials')
@@ -61,6 +62,37 @@ library(workflows)
 ```
 
 ## 0.2 - Functions
+
+```{r}
+precision_recall_at_k_from_last_fit_object <- function(last_fit_object, k=50){
+  
+  last_fit_object = last_fit_object
+
+  k = k
+
+  last_fit_object %>%
+       unnest(.predictions)  %>%  arrange(desc(.pred_yes)) %>% # Ordenar da maior prob de yes p/ a   menor
+       
+       mutate(
+           TP = ifelse(response=='yes' & .pred_class=="yes", 1, 0),
+           TN = ifelse(response=='no' & .pred_class=="no", 1, 0),
+           FP = ifelse(response=='no' & .pred_class=="yes", 1, 0),
+           FN = ifelse(response=='yes' & .pred_class=="no", 1, 0) # Definir TP, TN, FP, FN
+       ) %>% 
+       
+       dplyr_row_slice(1:k) %>% # Fazer o slicing das k linhas
+     
+     mutate(
+         precision_at_k = TP %>% sum()/(TP %>% sum() + FP %>% sum()),
+         recall_at_k = TP %>% sum()/(TP %>% sum() + FN %>% sum()) # Calcular precision e recall
+     ) %>% 
+     
+     select(precision_at_k, recall_at_k) %>% # Selecionar as colunas de precision e recall
+     
+     dplyr_row_slice(k)
+  
+}
+```
 
 ```{r}
 # Precision and Recall @ k
@@ -444,7 +476,7 @@ rm(previously_insuredr_plot)
 rm(response_plot)
 rm(vehicle_age_plot)
 rm(vehicle_damage_plot)
-gc()
+gc()    
 ```
 
 ## 2.2 Bivariate
@@ -1207,12 +1239,12 @@ gridExtra::grid.arrange(
 )
 ```
 
-## Cross validation
+## Hiperparameter Fine Tuning Cross validation
 
 ```{r}
 
 # carregar novamente o df inicial após tratamento
-df <- readRDS('df_cleaned.rds')
+df <- readRDS("/cloud/project/purchase_propensity_R/df_cleaned.rds")
 
 # COLOCAR OS ENCODERS DE MÉDIA
 
@@ -1308,7 +1340,9 @@ k_folder <- df_train %>% rsample::vfold_cv(v = 10, strata = response)
 # ===================================================================================
 
 
+# *******************************
 # Logistic regression
+# *******************************
 
 ## serão tunados os hiperparâmetros penalty e mixture (controlam o grau de regularização)
 ### função parsnip::tune() deve ser passada junto ao hiperparâmetro
@@ -1326,7 +1360,7 @@ lr_model <- logistic_reg(
 
 # Defining grid
 
-lr_grid <- extract_parameter_set_dials(lr_model) %>% grid_regular(levels = 5)
+lr_grid <- lr_model %>% extract_parameter_set_dials() %>% grid_regular(levels = 5)
 
 doParallel::registerDoParallel() # paralelização de execuções
 
@@ -1373,12 +1407,345 @@ lr_result <- last_fit(lr_workflow, splitter) # model training
 end_time <- Sys.time()
 
 print(end_time - start_time)
+
+
+
+# Confusion Matrix
+
+lr_results_conf_matrix <- lr_result %>%
+                              unnest(.predictions) %>%
+                              conf_mat(truth = response, estimate = .pred_class)
+
+print('Logistic Regression Confusion Matrix')
+print(lr_results_conf_matrix)
+
+
+# Gerando report resultados Logistic Regression
+lr_model_results <- lr_result %>% 
+  unnest(.predictions) %>% 
+  select(.pred_yes:response)
+
+
+# Calculando metrics at k
+lr_metrics_at_k <-precision_recall_at_k(lr_model_results)
+
+
+
+# *******************************
+# Decision Tree
+# *******************************
+
+## serão tunados os hiperparâmetros cp (cost_complexity), tree_depth e min_n ()
+### função parsnip::tune() deve ser passada junto ao hiperparâmetro
+
+# Model definition:
+dt_model <- decision_tree(
+  cost_complexity = tune(),
+  tree_depth = tune(),
+  min_n =  tune()
+  ) %>% 
+  set_engine("rpart") %>% 
+  set_mode("classification")
+
+#hardhat::extract_parameter_set_dials(dt_model)
+
+
+# Defining grid
+
+dt_grid <- dt_model %>% extract_parameter_set_dials() %>% grid_regular(levels = 3)
+
+doParallel::registerDoParallel() # paralelização de execuções
+
+start_time <- Sys.time()
+
+
+# tuning the model
+dt_tune <- tune_grid(dt_model,
+                     reciper,
+                     resamples = k_folder,
+                     grid = dt_grid)
+
+end_time <- Sys.time()
+
+print(end_time - start_time)
+
+
+# Selecting the best model hyperparameters
+dt_best_hyperparam <- dt_tune %>% select_best("roc_auc")
+
+
+# Applying the best hyperparameters to the model
+dt_best_model <- finalize_model(dt_model, dt_best_hyperparam)
+
+
+
+# Creating workflow
+dt_workflow <- workflow() %>% 
+  add_model(dt_best_model) %>% 
+  add_recipe(reciper)
+
+
+
+# Train final model
+doParallel::registerDoParallel() # paralelização de execuções
+
+
+start_time <- Sys.time()
+
+
+dt_result <- last_fit(dt_workflow, splitter) # model training
+
+
+end_time <- Sys.time()
+
+print(end_time - start_time)
+
+
+
+# Confusion Matrix
+
+dt_results_conf_matrix <- dt_result %>%
+                              unnest(.predictions) %>%
+                              conf_mat(truth = response, estimate = .pred_class)
+
+print('Decision Tree Confusion Matrix')
+print(dt_results_conf_matrix)
+
+
+# Gerando report resultados Decision Tree
+dt_model_results <- dt_result %>% 
+  unnest(.predictions) %>% 
+  select(.pred_yes:response)
+
+
+# Calculando metrics at k
+dt_metrics_at_k <-precision_recall_at_k(dt_model_results)
+
+
+
+# *******************************
+# Random Forest
+# *******************************
+
+## serão tunados os hiperparâmetros mtry (num de variáveis aleatórias a considerar em cada divisão), e min_n ()
+### função parsnip::tune() deve ser passada junto ao hiperparâmetro
+
+# Model definition:
+rf_model <- rand_forest(
+  mtry = tune(),
+  trees = tune(),
+  min_n =  tune()
+  ) %>% 
+  set_engine("ranger") %>% 
+  set_mode("classification")
+
+
+#hardhat::extract_parameter_set_dials(dt_model)
+
+
+# Defining grid
+
+rf_grid <- grid_regular(mtry(range=c(3,10)),
+                        min_n(range=c(100,1000)),
+                        trees(range=c(100,10000)),
+                        levels = 3)
+
+doParallel::registerDoParallel() # paralelização de execuções
+
+start_time <- Sys.time()
+
+
+# tuning the model
+rf_tune <- tune_grid(rf_model,
+                     reciper,
+                     resamples = k_folder,
+                     grid = rf_grid)
+
+end_time <- Sys.time()
+
+print(end_time - start_time)
+
+
+# Selecting the best model hyperparameters
+rf_best_hyperparam <- rf_tune %>% select_best("roc_auc")
+
+
+# Applying the best hyperparameters to the model
+rf_best_model <- finalize_model(rf_model, rf_best_hyperparam)
+
+
+
+# Creating workflow
+rf_workflow <- workflow() %>% 
+  add_model(rf_best_model) %>% 
+  add_recipe(reciper)
+
+
+
+# Train final model
+doParallel::registerDoParallel() # paralelização de execuções
+
+
+start_time <- Sys.time()
+
+
+rf_result <- last_fit(rf_workflow, splitter) # model training
+
+
+end_time <- Sys.time()
+
+print(end_time - start_time)
+
+
+
+# Confusion Matrix
+
+rf_results_conf_matrix <- rf_result %>%
+                              unnest(.predictions) %>%
+                              conf_mat(truth = response, estimate = .pred_class)
+
+print('Random Forest Matrix')
+print(rf_results_conf_matrix)
+
+
+# Gerando report resultados Decision Tree
+rf_model_results <- rf_result %>% 
+  unnest(.predictions) %>% 
+  select(.pred_yes:response)
+
+
+# Calculando metrics at k
+rf_metrics_at_k <-precision_recall_at_k(rf_model_results)
+
+
+
+# *******************************
+# XGBoost
+# *******************************
+
+## serão tunados os hiperparâmetros loss_reduction(), tree_depth e min_n (), sample_size(), mtry(), learn_rate()
+### função parsnip::tune() deve ser passada junto ao hiperparâmetro
+
+# Model definition:
+xgb_model <- boost_tree(
+  loss_reduction = tune(),
+  tree_depth = tune(),
+  min_n =  tune(),
+  sample_size = tune(),
+  mtry = tune(),
+  learn_rate = tune(),
+  trees = 1000
+  ) %>% 
+  set_engine("xgboost") %>% 
+  set_mode("classification")
+
+#hardhat::extract_parameter_set_dials(dt_model)
+
+
+# Defining grid
+
+xgb_grid <- grid_latin_hypercube(
+  tree_depth(),
+  loss_reduction(),
+  sample_size= sample_prop(),
+  finalize(mtry(), df_train),
+  min_n(),
+  learn_rate(),
+  size = 10)
+
+doParallel::registerDoParallel() # paralelização de execuções
+
+start_time <- Sys.time()
+
+
+# tuning the model
+xgb_tune <- tune_grid(xgb_model,
+                      reciper,
+                      resamples = k_folder,
+                      grid = xgb_grid)
+
+end_time <- Sys.time()
+
+print(end_time - start_time)
+
+
+# Selecting the best model hyperparameters
+xgb_best_hyperparam <- xgb_tune %>% select_best("roc_auc")
+
+
+# Applying the best hyperparameters to the model
+xgb_best_model <- finalize_model(xgb_model, xgb_best_hyperparam)
+
+
+
+# Creating workflow
+xgb_workflow <- workflow() %>% 
+  add_model(xgb_best_model) %>% 
+  add_recipe(reciper)
+
+
+
+# Train final model
+doParallel::registerDoParallel() # paralelização de execuções
+
+
+start_time <- Sys.time()
+
+
+xgb_result <- last_fit(xgb_workflow, splitter) # model training
+
+
+end_time <- Sys.time()
+
+print(end_time - start_time)
+
+
+
+# Confusion Matrix
+
+xgb_results_conf_matrix <- xgb_result %>%
+                              unnest(.predictions) %>%
+                              conf_mat(truth = response, estimate = .pred_class)
+
+print('XGBoost Confusion Matrix')
+print(xgb_results_conf_matrix)
+
+
+# Gerando report resultados XGBoost
+xgb_model_results <- xgb_result %>% 
+  unnest(.predictions) %>% 
+  select(.pred_yes:response)
+
+
+# Calculando metrics at k
+xgb_metrics_at_k <-precision_recall_at_k(xgb_model_results)
+
+
+
+# COLOCAR AQUI O FINE TUNING DOS DEMAIS MODELOS
+
+
+
+# Gerando resultado modelos
+tibble(model=c("Logistic Regression","Decision Tree"),
+       precision_at_k=c(lr_metrics_at_k$precision_at_k,
+                        dt_metrics_at_k$precision_at_k),
+       recall_at_k=c(lr_metrics_at_k$recall_at_k,
+                     dt_metrics_at_k$recall_at_k))
 ```
 
 ```{r}
-# Confusion Matrix
-
-lr_result %>% unnest(.predictions) %>% conf_mat(truth = response, estimate = .pred_class)
+gain_curve(lr_model_results, response, .pred_yes) %>% 
+  autoplot()
 ```
 
-## 
+```{r}
+lift_curve(lr_model_results, response, .pred_yes) %>% 
+  autoplot()
+```
+
+```{r}
+# Saving df as rds file
+base::saveRDS(lr_result, "lr_result.rds")
+base::saveRDS(dt_result, "dt_result.rds")
+```
